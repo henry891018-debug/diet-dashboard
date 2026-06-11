@@ -10,6 +10,7 @@ import {
   createInitialData,
   ingredientToKibble,
   isProteinSection,
+  kibbleTotals,
   makeUid,
   scaled,
 } from "@/lib/ingredients";
@@ -34,7 +35,9 @@ export default function Page() {
 
   const [mainMode, setMainMode] = useState<MainMode>("rice");
   const [kibbleIngredients, setKibbleIngredients] = useState<KibbleIngredient[]>([]);
-  const [kibbleResult, setKibbleResult] = useState<Totals | null>(null);
+  // 整鍋 Kibble 的總營養與總重；吃了多少（克）另記
+  const [kibbleBatch, setKibbleBatch] = useState<{ totals: Totals; weight: number } | null>(null);
+  const [kibbleEaten, setKibbleEaten] = useState(0);
   const [kibbleSelected, setKibbleSelected] = useState(false);
   const [kibbleOpen, setKibbleOpen] = useState(false);
 
@@ -84,17 +87,26 @@ export default function Page() {
         unit: entry.ing.unit,
       });
     });
-    if (kibbleSelected && kibbleResult) {
-      t.cal += kibbleResult.cal;
-      t.pro += kibbleResult.pro;
-      t.carb += kibbleResult.carb;
-      t.fat += kibbleResult.fat;
-      t.fiber += kibbleResult.fiber;
-      list.push({ id: KIBBLE_ID, name: "Kibble", pro: kibbleResult.pro, cal: kibbleResult.cal });
+    if (kibbleSelected && kibbleBatch && kibbleBatch.weight > 0) {
+      const f = kibbleEaten / kibbleBatch.weight;
+      const b = kibbleBatch.totals;
+      t.cal += b.cal * f;
+      t.pro += b.pro * f;
+      t.carb += b.carb * f;
+      t.fat += b.fat * f;
+      t.fiber += b.fiber * f;
+      list.push({
+        id: KIBBLE_ID,
+        name: "Kibble",
+        pro: b.pro * f,
+        cal: b.cal * f,
+        amount: kibbleEaten,
+        unit: "g",
+      });
     }
     return { totals: t, items: list };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, amounts, lookup, kibbleSelected, kibbleResult]);
+  }, [selected, amounts, lookup, kibbleSelected, kibbleBatch, kibbleEaten]);
 
   // ---- 食材操作 ----
   const toggle = (uid: string) =>
@@ -182,10 +194,20 @@ export default function Page() {
     setKibbleOpen(true);
   };
 
-  const applyKibble = (t: Totals) => {
-    setKibbleResult(t);
+  const applyKibble = () => {
+    const totals = kibbleTotals(kibbleIngredients);
+    const weight = kibbleIngredients.reduce((s, i) => s + i.amount, 0);
+    setKibbleBatch({ totals, weight });
+    // 第一次套用預設「吃整鍋」，之後保留使用者輸入的份量
+    setKibbleEaten((prev) => (prev > 0 ? prev : Math.round(weight)));
     setKibbleSelected(true);
     setKibbleOpen(false);
+  };
+
+  // 右側試算的重量編輯：Kibble 改的是「吃了多少」，其餘改各自份量
+  const handleSidebarAmount = (id: string, value: number) => {
+    if (id === KIBBLE_ID) setKibbleEaten(value);
+    else setAmount(id, value);
   };
 
   // ---- 渲染輔助 ----
@@ -304,8 +326,10 @@ export default function Page() {
               ) : (
                 <KibbleSummary
                   selected={kibbleSelected}
-                  result={kibbleResult}
+                  batch={kibbleBatch}
+                  eaten={kibbleEaten}
                   ingredients={kibbleIngredients}
+                  onEaten={setKibbleEaten}
                   onEdit={openKibbleEditor}
                 />
               )}
@@ -350,7 +374,7 @@ export default function Page() {
         totals={totals}
         items={items}
         onRemove={removeSelected}
-        onAmount={setAmount}
+        onAmount={handleSidebarAmount}
         onClear={clearAll}
       />
 
@@ -508,16 +532,22 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function KibbleSummary({
   selected,
-  result,
+  batch,
+  eaten,
   ingredients,
+  onEaten,
   onEdit,
 }: {
   selected: boolean;
-  result: Totals | null;
+  batch: { totals: Totals; weight: number } | null;
+  eaten: number;
   ingredients: KibbleIngredient[];
+  onEaten: (v: number) => void;
   onEdit: () => void;
 }) {
-  const ready = selected && result;
+  const ready = selected && batch && batch.weight > 0;
+  const b = batch?.totals;
+  const f = ready ? eaten / batch.weight : 0;
   return (
     <div className="relative rounded-rad border border-border bg-surface p-3">
       <div className="mb-1 text-[13px] font-medium">Kibble 配方</div>
@@ -525,21 +555,39 @@ function KibbleSummary({
         {ready ? ingredients.map((i) => i.name).join(" · ") : "尚未設定，點右上角編輯"}
       </div>
 
-      {ready && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          <span className="rounded bg-[#F1EFE8] px-[5px] py-0.5 text-[10px] text-[#444441]">
-            {Math.round(result!.cal)} kcal
-          </span>
-          <span className="rounded bg-pro-l px-[5px] py-0.5 text-[10px] text-pro">
-            {round1(result!.pro)}g 蛋白
-          </span>
-          <span className="rounded bg-amber-l px-[5px] py-0.5 text-[10px] text-amber">
-            {round1(result!.carb)}g 碳水
-          </span>
-          <span className="rounded bg-warn-l px-[5px] py-0.5 text-[10px] text-warn">
-            {round1(result!.fat)}g 脂肪
-          </span>
-        </div>
+      {ready && b && (
+        <>
+          <div className="mt-2 text-[11px] text-muted">
+            整鍋總重 {Math.round(batch.weight)}g（{Math.round(b.cal)} kcal · 蛋白 {round1(b.pro)}g）
+          </div>
+
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs font-medium">我吃了</span>
+            <input
+              type="number"
+              min={0}
+              value={eaten}
+              onChange={(e) => onEaten(parseFloat(e.target.value) || 0)}
+              className="w-20 rounded border-[0.5px] border-border bg-bg px-2 py-1 text-center text-xs focus:border-accent focus:outline-none"
+            />
+            <span className="text-[11px] text-muted">g</span>
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className="rounded bg-[#F1EFE8] px-[5px] py-0.5 text-[10px] text-[#444441]">
+              {Math.round(b.cal * f)} kcal
+            </span>
+            <span className="rounded bg-pro-l px-[5px] py-0.5 text-[10px] text-pro">
+              {round1(b.pro * f)}g 蛋白
+            </span>
+            <span className="rounded bg-amber-l px-[5px] py-0.5 text-[10px] text-amber">
+              {round1(b.carb * f)}g 碳水
+            </span>
+            <span className="rounded bg-warn-l px-[5px] py-0.5 text-[10px] text-warn">
+              {round1(b.fat * f)}g 脂肪
+            </span>
+          </div>
+        </>
       )}
 
       <button

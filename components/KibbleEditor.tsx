@@ -1,7 +1,7 @@
 "use client";
 
 import { ingredientToKibble, kibbleTotals } from "@/lib/ingredients";
-import type { Ingredient, KibbleIngredient, Totals } from "@/lib/types";
+import type { Ingredient, KibbleIngredient } from "@/lib/types";
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -11,7 +11,7 @@ interface Props {
   /** 可加入的食材來源：配菜區 */
   sideOptions: Ingredient[];
   onChange: (ings: KibbleIngredient[]) => void;
-  onApply: (totals: Totals) => void;
+  onApply: () => void;
   onClose: () => void;
 }
 
@@ -26,6 +26,7 @@ export default function KibbleEditor({
   if (!open) return null;
 
   const total = kibbleTotals(ingredients);
+  const totalWeight = ingredients.reduce((s, i) => s + i.amount, 0);
   const existing = new Set(ingredients.map((i) => i.name));
   const available = sideOptions.filter((s) => !existing.has(s.name));
 
@@ -121,9 +122,12 @@ export default function KibbleEditor({
 
         <hr className="my-2.5 border-t-[0.5px] border-border" />
 
-        {/* 本份合計 */}
-        <div className="mb-1.5 text-[11px] font-medium text-muted">此份 Kibble 合計</div>
+        {/* 整鍋合計（輸入的份量＝整鍋用量） */}
+        <div className="mb-1.5 text-[11px] font-medium text-muted">整鍋 Kibble 合計</div>
         <div className="flex flex-wrap gap-3 rounded-rad-sm bg-accent-l px-2.5 py-2">
+          <span className="text-xs">
+            總重 <span className="font-medium">{Math.round(totalWeight)}</span> g
+          </span>
           <span className="text-xs">
             <span className="font-medium">{Math.round(total.cal)}</span> kcal
           </span>
@@ -151,7 +155,7 @@ export default function KibbleEditor({
           </button>
           <button
             type="button"
-            onClick={() => onApply(kibbleTotals(ingredients))}
+            onClick={onApply}
             className="flex-1 rounded-rad-sm bg-accent py-2 text-[13px] font-medium text-white hover:bg-accent-d"
           >
             套用
