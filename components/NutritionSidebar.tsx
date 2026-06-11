@@ -9,16 +9,26 @@ export interface SelectedItem {
   name: string;
   pro: number;
   cal: number;
+  /** 目前份量（g）。Kibble 配方為 undefined（不可在此編輯重量）。 */
+  amount?: number;
+  unit?: string;
 }
 
 interface Props {
   totals: Totals;
   items: SelectedItem[];
   onRemove: (id: string) => void;
+  onAmount: (id: string, value: number) => void;
   onClear: () => void;
 }
 
-export default function NutritionSidebar({ totals, items, onRemove, onClear }: Props) {
+export default function NutritionSidebar({
+  totals,
+  items,
+  onRemove,
+  onAmount,
+  onClear,
+}: Props) {
   const { cal, pro, carb, fat, fiber } = totals;
   const mx = Math.max(carb, fat, fiber, 1);
   const pct = (v: number) => `${Math.min(100, (v / mx) * 100)}%`;
@@ -61,18 +71,36 @@ export default function NutritionSidebar({ totals, items, onRemove, onClear }: P
             items.map((it) => (
               <div
                 key={it.id}
-                className="flex items-center justify-between gap-2 border-b-[0.5px] border-border py-[3px] text-xs last:border-b-0"
+                className="flex flex-col gap-1 border-b-[0.5px] border-border py-1.5 last:border-b-0"
               >
-                <span className="flex-1 truncate">{it.name}</span>
-                <span className="text-[11px] text-pro">{round1(it.pro)}g</span>
-                <button
-                  type="button"
-                  onClick={() => onRemove(it.id)}
-                  className="pl-1 text-[15px] leading-none text-hint hover:text-warn"
-                  aria-label="移除"
-                >
-                  ×
-                </button>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex-1 truncate text-xs font-medium">{it.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(it.id)}
+                    className="text-[15px] leading-none text-hint hover:text-warn"
+                    aria-label="移除"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {it.amount != null ? (
+                    <>
+                      <input
+                        type="number"
+                        min={0}
+                        value={it.amount}
+                        onChange={(e) => onAmount(it.id, parseFloat(e.target.value) || 0)}
+                        className="w-14 rounded border-[0.5px] border-border bg-surface px-1.5 py-[2px] text-center text-[11px] focus:border-accent focus:outline-none"
+                      />
+                      <span className="text-[10px] text-muted">{it.unit}</span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-hint">配方</span>
+                  )}
+                  <span className="ml-auto text-[11px] text-pro">{round1(it.pro)}g 蛋白</span>
+                </div>
               </div>
             ))
           )}

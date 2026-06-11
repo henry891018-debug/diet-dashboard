@@ -58,7 +58,8 @@ export default function Page() {
   }, [data]);
 
   const amountOf = (ing: Ingredient) => amounts[ing.uid] ?? ing.amount;
-  const ratioOf = (ing: Ingredient) => (ing.amount ? amountOf(ing) / ing.amount : 0);
+  // 數值以每 100g 計，故 ratio = 份量 / 100
+  const ratioOf = (ing: Ingredient) => amountOf(ing) / 100;
 
   // 合計 + 已選清單
   const { totals, items } = useMemo(() => {
@@ -74,7 +75,14 @@ export default function Page() {
       t.carb += s.carb;
       t.fat += s.fat;
       t.fiber += s.fiber;
-      list.push({ id: uid, name: entry.ing.name, pro: s.pro, cal: s.cal });
+      list.push({
+        id: uid,
+        name: entry.ing.name,
+        pro: s.pro,
+        cal: s.cal,
+        amount: amountOf(entry.ing),
+        unit: entry.ing.unit,
+      });
     });
     if (kibbleSelected && kibbleResult) {
       t.cal += kibbleResult.cal;
@@ -201,7 +209,10 @@ export default function Page() {
         {/* 早餐 */}
         {tab === "b" && (
           <div>
-            <Section label="主食">
+            <Section
+              label="主食"
+              onAdd={() => setAddModal({ open: true, section: "b-main" })}
+            >
               <Grid
                 section="b-main"
                 items={data["b-main"]}
@@ -251,13 +262,20 @@ export default function Page() {
         {/* 午餐 */}
         {tab === "l" && (
           <div>
-            <Section label="主食">
+            <Section
+              label="主食"
+              onAdd={
+                mainMode === "rice"
+                  ? () => setAddModal({ open: true, section: "l-main-rice" })
+                  : undefined
+              }
+            >
               {/* 白飯 / Kibble 選擇 */}
               <div className="mb-3 flex gap-2">
                 <MainOption
                   active={mainMode === "rice"}
                   title="白飯"
-                  sub="糙白米混合"
+                  sub="白米飯"
                   onClick={() => selectMain("rice")}
                 />
                 <MainOption
@@ -328,6 +346,7 @@ export default function Page() {
         totals={totals}
         items={items}
         onRemove={removeSelected}
+        onAmount={setAmount}
         onClear={clearAll}
       />
 

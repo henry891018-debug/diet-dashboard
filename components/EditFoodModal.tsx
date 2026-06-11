@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import type { Ingredient } from "@/lib/types";
 
-const UNITS = ["g", "ml", "顆", "碗", "份"];
+const UNITS = ["g", "ml"];
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /** 編輯後回傳的欄位（不含 uid / tag，由父層保留）。 */
 export interface EditedFood {
@@ -16,6 +18,8 @@ export interface EditedFood {
   fat: number;
   fiber: number;
   shrink?: number;
+  pieceGram?: number;
+  pieceUnit?: string;
 }
 
 interface Props {
@@ -43,6 +47,7 @@ export default function EditFoodModal({
     fat: "",
     fiber: "",
     shrink: "",
+    pieceGram: "",
   });
 
   // 帶入被編輯的食材
@@ -58,6 +63,7 @@ export default function EditFoodModal({
         fat: String(ingredient.fat),
         fiber: String(ingredient.fiber),
         shrink: ingredient.shrink != null ? String(ingredient.shrink) : "",
+        pieceGram: ingredient.pieceGram != null ? String(ingredient.pieceGram) : "",
       });
     }
   }, [open, ingredient]);
@@ -80,8 +86,18 @@ export default function EditFoodModal({
     };
     const sh = parseFloat(form.shrink);
     if (sh) food.shrink = sh;
+    // 以「顆」計的食材（如全蛋）保留每顆重量資訊
+    if (ingredient!.pieceUnit) {
+      food.pieceUnit = ingredient!.pieceUnit;
+      const pg = parseFloat(form.pieceGram);
+      if (pg) food.pieceGram = pg;
+    }
     onSave(food);
   }
+
+  const pieceGram = parseFloat(form.pieceGram) || 0;
+  const pieceFactor = pieceGram / 100;
+  const num = (s: string) => parseFloat(s) || 0;
 
   return (
     <div
@@ -103,7 +119,7 @@ export default function EditFoodModal({
         </Field>
 
         <div className="mb-2.5 grid grid-cols-2 gap-2">
-          <Field label="預設份量">
+          <Field label="預設份量 (g)">
             <input
               className="modal-input"
               type="number"
@@ -137,12 +153,45 @@ export default function EditFoodModal({
         )}
 
         <div className="grid grid-cols-3 gap-2">
-          <NumField label="熱量 kcal" value={form.cal} onChange={(v) => set("cal", v)} />
-          <NumField label="蛋白質 g" value={form.pro} onChange={(v) => set("pro", v)} />
-          <NumField label="碳水 g" value={form.carb} onChange={(v) => set("carb", v)} />
-          <NumField label="脂肪 g" value={form.fat} onChange={(v) => set("fat", v)} />
-          <NumField label="纖維 g" value={form.fiber} onChange={(v) => set("fiber", v)} />
+          <NumField label="熱量 kcal/100g" value={form.cal} onChange={(v) => set("cal", v)} />
+          <NumField label="蛋白質 g/100g" value={form.pro} onChange={(v) => set("pro", v)} />
+          <NumField label="碳水 g/100g" value={form.carb} onChange={(v) => set("carb", v)} />
+          <NumField label="脂肪 g/100g" value={form.fat} onChange={(v) => set("fat", v)} />
+          <NumField label="纖維 g/100g" value={form.fiber} onChange={(v) => set("fiber", v)} />
         </div>
+
+        {/* 以「顆」計的食材：每顆重量 + 每顆營養（由每 100g 換算） */}
+        {ingredient.pieceUnit && (
+          <div className="mt-3 rounded-rad-sm border border-border p-2.5">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-[11px] text-muted">每{ingredient.pieceUnit}重量 (g)</span>
+              <input
+                type="number"
+                min={0}
+                value={form.pieceGram}
+                onChange={(e) => set("pieceGram", e.target.value)}
+                className="w-20 rounded border-[0.5px] border-border bg-bg px-2 py-1 text-center text-xs focus:border-accent focus:outline-none"
+              />
+            </div>
+            <div className="mb-1 text-[11px] text-muted">
+              每{ingredient.pieceUnit}（{pieceGram || 0}g）約：
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded bg-[#F1EFE8] px-[5px] py-0.5 text-[10px] text-[#444441]">
+                {Math.round(num(form.cal) * pieceFactor)} kcal
+              </span>
+              <span className="rounded bg-pro-l px-[5px] py-0.5 text-[10px] text-pro">
+                {round1(num(form.pro) * pieceFactor)}g 蛋白
+              </span>
+              <span className="rounded bg-amber-l px-[5px] py-0.5 text-[10px] text-amber">
+                {round1(num(form.carb) * pieceFactor)}g 碳水
+              </span>
+              <span className="rounded bg-warn-l px-[5px] py-0.5 text-[10px] text-warn">
+                {round1(num(form.fat) * pieceFactor)}g 脂肪
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 flex gap-2">
           <button

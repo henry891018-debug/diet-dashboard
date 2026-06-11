@@ -12,10 +12,11 @@ export type SectionId =
 /** 食材標籤（決定卡片標籤顏色） */
 export type FoodTag = "主食" | "蛋白質" | "飲品" | "豆類" | "蔬菜" | "自訂";
 
-/** 單一食材。cal/pro/carb/... 為「該 amount 份量的總量」（非每 100g）。 */
+/** 單一食材。cal/pro/carb/... 為「每 100g 含量」；amount 為預設份量（公克）。 */
 export interface Ingredient {
   uid: string;
   name: string;
+  /** 預設份量（公克） */
   amount: number;
   unit: string;
   cal: number;
@@ -26,6 +27,10 @@ export interface Ingredient {
   tag: FoodTag;
   /** 縮水率＝熟重 / 生重（肉類約 0.78–0.85）。僅蛋白質類使用。 */
   shrink?: number;
+  /** 單顆/單份重量（公克）。設定後，編輯時會額外顯示「每顆」營養值（如全蛋）。 */
+  pieceGram?: number;
+  /** 單顆單位顯示文字（如「顆」）。 */
+  pieceUnit?: string;
 }
 
 /** Kibble 快速加入清單的基底食材。數值為「每單位」（每 g 或每顆）。 */

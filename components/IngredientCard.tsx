@@ -43,7 +43,8 @@ export default function IngredientCard({
   onEdit,
   onDelete,
 }: Props) {
-  const ratio = ing.amount ? amount / ing.amount : 0;
+  // 數值以每 100g 計，故實際含量 = 值 × (份量 / 100)
+  const ratio = amount / 100;
 
   return (
     <div
@@ -99,7 +100,9 @@ export default function IngredientCard({
         {ing.tag}
       </span>
 
-      <div className="mb-[3px] pr-5 text-xs font-medium leading-tight">{ing.name}</div>
+      <div className="mb-1 pr-5 text-[15px] font-semibold leading-snug text-text">
+        {ing.name}
+      </div>
 
       {/* 份量輸入 */}
       <div className="mb-0.5 flex items-center gap-1">

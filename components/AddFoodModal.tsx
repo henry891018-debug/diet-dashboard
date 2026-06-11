@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const UNITS = ["g", "ml", "顆", "碗", "份"];
+const UNITS = ["g", "ml"];
 
 export interface NewFood {
   name: string;
@@ -88,7 +88,7 @@ export default function AddFoodModal({ open, isProtein, onClose, onAdd }: Props)
         </Field>
 
         <div className="mb-2.5 grid grid-cols-2 gap-2">
-          <Field label="份量">
+          <Field label="預設份量 (g)">
             <input
               className="modal-input"
               type="number"
@@ -124,11 +124,11 @@ export default function AddFoodModal({ open, isProtein, onClose, onAdd }: Props)
         )}
 
         <div className="grid grid-cols-3 gap-2">
-          <NumField label="熱量 kcal" value={form.cal} onChange={(v) => set("cal", v)} />
-          <NumField label="蛋白質 g" value={form.pro} onChange={(v) => set("pro", v)} />
-          <NumField label="碳水 g" value={form.carb} onChange={(v) => set("carb", v)} />
-          <NumField label="脂肪 g" value={form.fat} onChange={(v) => set("fat", v)} />
-          <NumField label="纖維 g" value={form.fiber} onChange={(v) => set("fiber", v)} />
+          <NumField label="熱量 kcal/100g" value={form.cal} onChange={(v) => set("cal", v)} />
+          <NumField label="蛋白質 g/100g" value={form.pro} onChange={(v) => set("pro", v)} />
+          <NumField label="碳水 g/100g" value={form.carb} onChange={(v) => set("carb", v)} />
+          <NumField label="脂肪 g/100g" value={form.fat} onChange={(v) => set("fat", v)} />
+          <NumField label="纖維 g/100g" value={form.fiber} onChange={(v) => set("fiber", v)} />
         </div>
 
         <div className="mt-4 flex gap-2">
