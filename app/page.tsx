@@ -8,6 +8,7 @@ import KibbleEditor from "@/components/KibbleEditor";
 import NutritionSidebar, { type SelectedItem } from "@/components/NutritionSidebar";
 import {
   createInitialData,
+  ingredientToKibble,
   isProteinSection,
   makeUid,
   scaled,
@@ -173,6 +174,11 @@ export default function Page() {
   };
 
   const openKibbleEditor = () => {
+    // 預設帶入白米飯（取自午餐主食的白飯資料，換算成每 g）
+    if (kibbleIngredients.length === 0) {
+      const rice = data["l-main-rice"][0];
+      if (rice) setKibbleIngredients([ingredientToKibble(rice)]);
+    }
     setKibbleOpen(true);
   };
 
