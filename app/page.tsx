@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AddFoodModal, { type NewFood } from "@/components/AddFoodModal";
 import EditFoodModal, { type EditedFood } from "@/components/EditFoodModal";
 import IngredientCard from "@/components/IngredientCard";
@@ -14,18 +14,14 @@ import {
   makeUid,
   scaled,
 } from "@/lib/ingredients";
-import type {
-  FoodTag,
-  Ingredient,
-  KibbleIngredient,
-  SectionId,
-  Totals,
-} from "@/lib/types";
+import type { FoodCategory } from "@/lib/categories";
+import type { Ingredient, KibbleIngredient, SectionId, Totals } from "@/lib/types";
 
 type Tab = "b" | "l";
 type MainMode = "rice" | "kibble";
 
 const KIBBLE_ID = "__kibble";
+const STORAGE_KEY = "diet-dashboard:v1";
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("b");
@@ -50,6 +46,67 @@ export default function Page() {
     section: SectionId | null;
     uid: string | null;
   }>({ open: false, section: null, uid: null });
+
+  // 配菜分類篩選（"全部" 或某分類）
+  const [sideCat, setSideCat] = useState<string>("全部");
+
+  // ---- localStorage 持久化（重整後保留所有變更）----
+  const loaded = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.tab) setTab(s.tab);
+        if (s.data) setData(s.data);
+        if (s.amounts) setAmounts(s.amounts);
+        if (s.selected) setSelected(s.selected);
+        if (s.mainMode) setMainMode(s.mainMode);
+        if (s.kibbleIngredients) setKibbleIngredients(s.kibbleIngredients);
+        if (s.kibbleBatch !== undefined) setKibbleBatch(s.kibbleBatch);
+        if (typeof s.kibbleEaten === "number") setKibbleEaten(s.kibbleEaten);
+        if (typeof s.kibbleSelected === "boolean") setKibbleSelected(s.kibbleSelected);
+        if (s.sideCat) setSideCat(s.sideCat);
+      }
+    } catch {
+      // 忽略毀損的儲存內容
+    }
+    loaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!loaded.current) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          tab,
+          data,
+          amounts,
+          selected,
+          mainMode,
+          kibbleIngredients,
+          kibbleBatch,
+          kibbleEaten,
+          kibbleSelected,
+          sideCat,
+        }),
+      );
+    } catch {
+      // 忽略寫入失敗（如隱私模式）
+    }
+  }, [
+    tab,
+    data,
+    amounts,
+    selected,
+    mainMode,
+    kibbleIngredients,
+    kibbleBatch,
+    kibbleEaten,
+    kibbleSelected,
+    sideCat,
+  ]);
 
   // uid -> {ing, section} 查表
   const lookup = useMemo(() => {
@@ -121,10 +178,18 @@ export default function Page() {
     setAmounts((prev) => ({ ...prev, [uid]: value }));
 
   const addFood = (section: SectionId, food: NewFood) => {
-    const tag: FoodTag = isProteinSection(section) ? "蛋白質" : "自訂";
-    const ing: Ingredient = { ...food, uid: makeUid(), tag };
+    const ing: Ingredient = { ...food, uid: makeUid() };
     setData((prev) => ({ ...prev, [section]: [...prev[section], ing] }));
     setAddModal({ open: false, section: null });
+  };
+
+  const updateCategory = (section: SectionId, uid: string, category: FoodCategory) => {
+    setData((prev) => ({
+      ...prev,
+      [section]: prev[section].map((ing) =>
+        ing.uid === uid ? { ...ing, category } : ing,
+      ),
+    }));
   };
 
   const saveEdit = (section: SectionId, uid: string, edited: EditedFood) => {
@@ -216,6 +281,13 @@ export default function Page() {
       ? data[editModal.section].find((i) => i.uid === editModal.uid) ?? null
       : null;
 
+  // 配菜分類篩選
+  const sideCats = Array.from(new Set(data["l-side"].map((i) => i.category)));
+  const sideItems =
+    sideCat === "全部"
+      ? data["l-side"]
+      : data["l-side"].filter((i) => i.category === sideCat);
+
   return (
     <div className="grid min-h-screen grid-cols-[1fr_260px]">
       <main className="p-6">
@@ -246,6 +318,7 @@ export default function Page() {
                 amountOf={amountOf}
                 onToggle={toggle}
                 onAmount={setAmount}
+                onCategory={updateCategory}
                 onEdit={(uid) => setEditModal({ open: true, section: "b-main", uid })}
                 onDelete={(uid) => deleteIng("b-main", uid)}
               />
@@ -262,6 +335,7 @@ export default function Page() {
                 amountOf={amountOf}
                 onToggle={toggle}
                 onAmount={setAmount}
+                onCategory={updateCategory}
                 onEdit={(uid) => setEditModal({ open: true, section: "b-pro", uid })}
                 onDelete={(uid) => deleteIng("b-pro", uid)}
               />
@@ -278,6 +352,7 @@ export default function Page() {
                 amountOf={amountOf}
                 onToggle={toggle}
                 onAmount={setAmount}
+                onCategory={updateCategory}
                 onEdit={(uid) => setEditModal({ open: true, section: "b-drink", uid })}
                 onDelete={(uid) => deleteIng("b-drink", uid)}
               />
@@ -320,6 +395,7 @@ export default function Page() {
                   amountOf={amountOf}
                   onToggle={toggle}
                   onAmount={setAmount}
+                  onCategory={updateCategory}
                   onEdit={(uid) => setEditModal({ open: true, section: "l-main-rice", uid })}
                   onDelete={(uid) => deleteIng("l-main-rice", uid)}
                 />
@@ -346,6 +422,7 @@ export default function Page() {
                 amountOf={amountOf}
                 onToggle={toggle}
                 onAmount={setAmount}
+                onCategory={updateCategory}
                 onEdit={(uid) => setEditModal({ open: true, section: "l-pro", uid })}
                 onDelete={(uid) => deleteIng("l-pro", uid)}
               />
@@ -354,14 +431,30 @@ export default function Page() {
             <Section
               label="配菜"
               onAdd={() => setAddModal({ open: true, section: "l-side" })}
+              extra={
+                <select
+                  value={sideCat}
+                  onChange={(e) => setSideCat(e.target.value)}
+                  className="rounded-rad-sm border-[0.5px] border-border bg-surface px-2 py-1 text-[11px] text-muted focus:border-accent focus:outline-none"
+                  aria-label="配菜分類篩選"
+                >
+                  <option value="全部">全部</option>
+                  {sideCats.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              }
             >
               <Grid
                 section="l-side"
-                items={data["l-side"]}
+                items={sideItems}
                 selected={selected}
                 amountOf={amountOf}
                 onToggle={toggle}
                 onAmount={setAmount}
+                onCategory={updateCategory}
                 onEdit={(uid) => setEditModal({ open: true, section: "l-side", uid })}
                 onDelete={(uid) => deleteIng("l-side", uid)}
               />
@@ -434,10 +527,12 @@ function TabButton({
 function Section({
   label,
   onAdd,
+  extra,
   children,
 }: {
   label: string;
   onAdd?: () => void;
+  extra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -446,15 +541,18 @@ function Section({
         <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-muted">
           {label}
         </span>
-        {onAdd && (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="flex items-center gap-1 rounded-rad-sm border-[0.5px] border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-accent hover:text-accent"
-          >
-            ＋ 新增
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {extra}
+          {onAdd && (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="flex items-center gap-1 rounded-rad-sm border-[0.5px] border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-accent hover:text-accent"
+            >
+              ＋ 新增
+            </button>
+          )}
+        </div>
       </div>
       {children}
     </section>
@@ -468,6 +566,7 @@ function Grid({
   amountOf,
   onToggle,
   onAmount,
+  onCategory,
   onEdit,
   onDelete,
 }: {
@@ -477,6 +576,7 @@ function Grid({
   amountOf: (ing: Ingredient) => number;
   onToggle: (uid: string) => void;
   onAmount: (uid: string, value: number) => void;
+  onCategory: (section: SectionId, uid: string, category: FoodCategory) => void;
   onEdit: (uid: string) => void;
   onDelete: (uid: string) => void;
 }) {
@@ -495,6 +595,7 @@ function Grid({
           isProtein={isProtein}
           onToggle={() => onToggle(ing.uid)}
           onAmountChange={(v) => onAmount(ing.uid, v)}
+          onCategoryChange={(cat) => onCategory(section, ing.uid, cat)}
           onEdit={() => onEdit(ing.uid)}
           onDelete={() => onDelete(ing.uid)}
         />

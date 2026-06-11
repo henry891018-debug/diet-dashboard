@@ -1,22 +1,7 @@
 "use client";
 
-import type { FoodTag, Ingredient } from "@/lib/types";
-
-/** 標籤 → 顏色 class */
-function tagClass(tag: FoodTag): string {
-  switch (tag) {
-    case "蛋白質":
-      return "bg-pro-l text-pro";
-    case "主食":
-      return "bg-amber-l text-amber";
-    case "豆類":
-      return "bg-purple-l text-purple";
-    case "蔬菜":
-      return "bg-green-l text-green";
-    default:
-      return "bg-bg text-muted";
-  }
-}
+import { CATEGORIES, categoryColor, type FoodCategory } from "@/lib/categories";
+import type { Ingredient } from "@/lib/types";
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -29,6 +14,7 @@ interface Props {
   isProtein: boolean;
   onToggle: () => void;
   onAmountChange: (value: number) => void;
+  onCategoryChange: (category: FoodCategory) => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -40,11 +26,13 @@ export default function IngredientCard({
   isProtein,
   onToggle,
   onAmountChange,
+  onCategoryChange,
   onEdit,
   onDelete,
 }: Props) {
   // 數值以每 100g 計，故實際含量 = 值 × (份量 / 100)
   const ratio = amount / 100;
+  const cc = categoryColor(ing.category);
 
   return (
     <div
@@ -94,11 +82,23 @@ export default function IngredientCard({
         </button>
       </div>
 
-      <span
-        className={`mb-[5px] inline-block rounded-full px-1.5 py-px text-[10px] ${tagClass(ing.tag)}`}
+      <select
+        value={ing.category}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          e.stopPropagation();
+          onCategoryChange(e.target.value as FoodCategory);
+        }}
+        style={{ backgroundColor: cc.bg, color: cc.color }}
+        className="mb-1.5 max-w-full cursor-pointer appearance-none rounded-full border-none px-1.5 py-[2px] text-[10px] font-medium outline-none"
+        aria-label="分類"
       >
-        {ing.tag}
-      </span>
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c} style={{ backgroundColor: "#fff", color: "#1A1A18" }}>
+            {c}
+          </option>
+        ))}
+      </select>
 
       <div className="mb-1 pr-5 text-[15px] font-semibold leading-snug text-text">
         {ing.name}

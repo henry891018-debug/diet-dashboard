@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CATEGORIES, type FoodCategory } from "@/lib/categories";
 
 const UNITS = ["g", "ml"];
 
@@ -13,6 +14,7 @@ export interface NewFood {
   carb: number;
   fat: number;
   fiber: number;
+  category: FoodCategory;
   shrink?: number;
 }
 
@@ -27,6 +29,7 @@ const emptyForm = {
   name: "",
   amount: "",
   unit: "g",
+  category: "其他",
   cal: "",
   pro: "",
   carb: "",
@@ -55,6 +58,7 @@ export default function AddFoodModal({ open, isProtein, onClose, onAdd }: Props)
       name,
       amount: parseFloat(form.amount) || 100,
       unit: form.unit,
+      category: form.category as FoodCategory,
       cal: parseFloat(form.cal) || 0,
       pro: parseFloat(form.pro) || 0,
       carb: parseFloat(form.carb) || 0,
@@ -85,6 +89,18 @@ export default function AddFoodModal({ open, isProtein, onClose, onAdd }: Props)
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
           />
+        </Field>
+
+        <Field label="分類">
+          <select
+            className="modal-input"
+            value={form.category}
+            onChange={(e) => set("category", e.target.value)}
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
         </Field>
 
         <div className="mb-2.5 grid grid-cols-2 gap-2">
