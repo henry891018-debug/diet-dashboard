@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 三大營養素進度條顏色 */
+  --carb: #ef9f27;
+  --fat: #d85a30;
+  --fiber: #639922;
+}
+
+html,
+body {
+  background: #f7f6f2;
+  color: #1a1a18;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 數字輸入框去掉上下調整鈕，維持 mockup 的精簡外觀 */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* 側欄與清單的細捲軸 */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #cccab8;
+  border-radius: 3px;
+}
+
+@layer components {
+  /* modal 內的文字 / 數字 / 下拉欄位共用樣式 */
+  .modal-input {
+    @apply w-full rounded-rad-sm border-[0.5px] border-border bg-bg px-2.5 py-[7px] text-[13px] focus:border-accent focus:outline-none;
+  }
+}
