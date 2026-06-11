@@ -7,7 +7,6 @@ import IngredientCard from "@/components/IngredientCard";
 import KibbleEditor from "@/components/KibbleEditor";
 import NutritionSidebar, { type SelectedItem } from "@/components/NutritionSidebar";
 import {
-  createDefaultKibble,
   createInitialData,
   isProteinSection,
   makeUid,
@@ -174,7 +173,6 @@ export default function Page() {
   };
 
   const openKibbleEditor = () => {
-    if (kibbleIngredients.length === 0) setKibbleIngredients(createDefaultKibble());
     setKibbleOpen(true);
   };
 
@@ -369,6 +367,7 @@ export default function Page() {
       <KibbleEditor
         open={kibbleOpen}
         ingredients={kibbleIngredients}
+        sideOptions={data["l-side"]}
         onChange={setKibbleIngredients}
         onApply={applyKibble}
         onClose={() => setKibbleOpen(false)}

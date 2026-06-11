@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { KIBBLE_BASE, kibbleTotals } from "@/lib/ingredients";
-import type { KibbleIngredient, Totals } from "@/lib/types";
+import { ingredientToKibble, kibbleTotals } from "@/lib/ingredients";
+import type { Ingredient, KibbleIngredient, Totals } from "@/lib/types";
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
-
-const emptyDraft = { name: "", amount: "", cal: "", pro: "", carb: "", fat: "", fiber: "" };
 
 interface Props {
   open: boolean;
   ingredients: KibbleIngredient[];
+  /** 可加入的食材來源：配菜區 */
+  sideOptions: Ingredient[];
   onChange: (ings: KibbleIngredient[]) => void;
   onApply: (totals: Totals) => void;
   onClose: () => void;
@@ -19,43 +18,16 @@ interface Props {
 export default function KibbleEditor({
   open,
   ingredients,
+  sideOptions,
   onChange,
   onApply,
   onClose,
 }: Props) {
-  // hooks 必須在任何 early return 之前呼叫
-  const [draft, setDraft] = useState({ ...emptyDraft });
-
   if (!open) return null;
 
   const total = kibbleTotals(ingredients);
   const existing = new Set(ingredients.map((i) => i.name));
-  const quick = KIBBLE_BASE.filter((b) => !existing.has(b.name));
-
-  const setD = (key: keyof typeof emptyDraft, value: string) =>
-    setDraft((d) => ({ ...d, [key]: value }));
-
-  // 自訂新增：輸入每 100g 營養值，內部換算成每 g 儲存
-  const addCustom = () => {
-    const name = draft.name.trim();
-    if (!name) return;
-    const amount = parseFloat(draft.amount) || 100;
-    const per = (v: string) => (parseFloat(v) || 0) / 100;
-    onChange([
-      ...ingredients,
-      {
-        name,
-        unit: "g",
-        amount,
-        cal: per(draft.cal),
-        pro: per(draft.pro),
-        carb: per(draft.carb),
-        fat: per(draft.fat),
-        fiber: per(draft.fiber),
-      },
-    ]);
-    setDraft({ ...emptyDraft });
-  };
+  const available = sideOptions.filter((s) => !existing.has(s.name));
 
   const updateAmt = (idx: number, value: number) => {
     onChange(
@@ -65,10 +37,10 @@ export default function KibbleEditor({
   const removeIng = (idx: number) => {
     onChange(ingredients.filter((_, i) => i !== idx));
   };
-  const addIng = (name: string) => {
-    const base = KIBBLE_BASE.find((b) => b.name === name);
-    if (!base) return;
-    onChange([...ingredients, { ...base, amount: base.perUnit ? 1 : 80 }]);
+  const addFromSide = (uid: string) => {
+    const ing = sideOptions.find((s) => s.uid === uid);
+    if (!ing) return;
+    onChange([...ingredients, ingredientToKibble(ing)]);
   };
 
   return (
@@ -86,7 +58,7 @@ export default function KibbleEditor({
         {/* 配方食材清單 */}
         <div className="mb-3 flex flex-col gap-1.5">
           {ingredients.length === 0 ? (
-            <div className="py-3 text-center text-xs text-hint">加入食材</div>
+            <div className="py-3 text-center text-xs text-hint">從下方選擇配菜加入</div>
           ) : (
             ingredients.map((ing, i) => (
               <div
@@ -121,49 +93,30 @@ export default function KibbleEditor({
           )}
         </div>
 
-        {/* 快速加入 */}
-        {quick.length > 0 && (
-          <div className="mb-3">
-            <div className="mb-1.5 text-[11px] text-muted">快速加入</div>
-            <div className="flex flex-wrap gap-1.5">
-              {quick.map((b) => (
-                <button
-                  key={b.name}
-                  type="button"
-                  onClick={() => addIng(b.name)}
-                  className="rounded-full border-[0.5px] border-border bg-surface px-2.5 py-1 text-[11px] text-muted hover:border-accent hover:text-accent"
-                >
-                  {b.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 新增其他食材（自訂） */}
-        <div className="mb-3 rounded-rad-sm border border-border p-2.5">
-          <div className="mb-1.5 text-[11px] text-muted">新增其他食材（每 100g 營養值）</div>
-          <input
-            className="mb-1 w-full rounded border-[0.5px] border-border bg-bg px-2 py-1 text-xs focus:border-accent focus:outline-none"
-            placeholder="名稱"
-            value={draft.name}
-            onChange={(e) => setD("name", e.target.value)}
-          />
-          <div className="grid grid-cols-3 gap-1">
-            <DraftInput placeholder="份量 g" value={draft.amount} onChange={(v) => setD("amount", v)} />
-            <DraftInput placeholder="熱量" value={draft.cal} onChange={(v) => setD("cal", v)} />
-            <DraftInput placeholder="蛋白" value={draft.pro} onChange={(v) => setD("pro", v)} />
-            <DraftInput placeholder="碳水" value={draft.carb} onChange={(v) => setD("carb", v)} />
-            <DraftInput placeholder="脂肪" value={draft.fat} onChange={(v) => setD("fat", v)} />
-            <DraftInput placeholder="纖維" value={draft.fiber} onChange={(v) => setD("fiber", v)} />
-          </div>
-          <button
-            type="button"
-            onClick={addCustom}
-            className="mt-1.5 w-full rounded-rad-sm border-[0.5px] border-accent bg-accent-l py-1.5 text-[11px] font-medium text-accent hover:bg-accent hover:text-white"
+        {/* 從配菜加入（下拉選擇，不需另建食材庫） */}
+        <div className="mb-3">
+          <div className="mb-1.5 text-[11px] text-muted">從配菜加入食材</div>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) addFromSide(e.target.value);
+            }}
+            className="w-full rounded-rad-sm border-[0.5px] border-border bg-bg px-2.5 py-2 text-[13px] focus:border-accent focus:outline-none"
           >
-            ＋ 加入食材
-          </button>
+            <option value="" disabled>
+              選擇配菜加入…
+            </option>
+            {available.map((s) => (
+              <option key={s.uid} value={s.uid}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {available.length === 0 && (
+            <div className="mt-1 text-[11px] text-hint">
+              配菜都已加入（可到「配菜」區新增更多食材）
+            </div>
+          )}
         </div>
 
         <hr className="my-2.5 border-t-[0.5px] border-border" />
@@ -206,26 +159,5 @@ export default function KibbleEditor({
         </div>
       </div>
     </div>
-  );
-}
-
-function DraftInput({
-  placeholder,
-  value,
-  onChange,
-}: {
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <input
-      type="number"
-      min={0}
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded border-[0.5px] border-border bg-bg px-2 py-1 text-center text-xs focus:border-accent focus:outline-none"
-    />
   );
 }

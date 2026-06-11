@@ -1,10 +1,4 @@
-import type {
-  Ingredient,
-  KibbleBase,
-  KibbleIngredient,
-  SectionId,
-  Totals,
-} from "./types";
+import type { Ingredient, KibbleIngredient, SectionId, Totals } from "./types";
 
 // ---- 唯一 ID 產生器 ----
 let uidCounter = 0;
@@ -67,29 +61,24 @@ export function createInitialData(): Record<SectionId, Ingredient[]> {
   };
 }
 
-/** Kibble 編輯器「快速加入」可選的基底食材（每單位營養值）。 */
-export const KIBBLE_BASE: KibbleBase[] = [
-  { name: "白米飯", unit: "g", cal: 1.3, pro: 0.027, carb: 0.28, fat: 0.003, fiber: 0.004 },
-  { name: "全蛋", unit: "顆", cal: 72, pro: 6, carb: 0.4, fat: 5, fiber: 0, perUnit: true },
-  { name: "毛豆仁", unit: "g", cal: 1.2, pro: 0.117, carb: 0.085, fat: 0.054, fiber: 0.04 },
-  { name: "青花菜", unit: "g", cal: 0.34, pro: 0.025, carb: 0.065, fat: 0.004, fiber: 0.026 },
-  { name: "胡蘿蔔", unit: "g", cal: 0.41, pro: 0.009, carb: 0.096, fat: 0.002, fiber: 0.028 },
-  { name: "菠菜", unit: "g", cal: 0.23, pro: 0.029, carb: 0.036, fat: 0.004, fiber: 0.022 },
-  { name: "蕈菇絲", unit: "g", cal: 0.1, pro: 0.002, carb: 0.02, fat: 0, fiber: 0.022 },
-];
-
-/** Kibble 編輯器首次開啟時的預設配方。 */
-export function createDefaultKibble(): KibbleIngredient[] {
-  return [
-    { name: "白米飯", unit: "g", amount: 175, cal: 1.3, pro: 0.027, carb: 0.28, fat: 0.003, fiber: 0.004 },
-    { name: "全蛋", unit: "顆", amount: 1, cal: 72, pro: 6, carb: 0.4, fat: 5, fiber: 0, perUnit: true },
-    { name: "毛豆仁", unit: "g", amount: 60, cal: 1.2, pro: 0.117, carb: 0.085, fat: 0.054, fiber: 0.04 },
-    { name: "青花菜", unit: "g", amount: 80, cal: 0.34, pro: 0.025, carb: 0.065, fat: 0.004, fiber: 0.026 },
-    { name: "胡蘿蔔", unit: "g", amount: 50, cal: 0.41, pro: 0.009, carb: 0.096, fat: 0.002, fiber: 0.028 },
-  ];
-}
-
 // ---- 計算工具 ----
+
+/**
+ * 將「每 100g」的食材（如配菜）轉成 Kibble 用的「每 g」食材。
+ * Kibble 內部以每 g 儲存，方便乘以份量得到總量。
+ */
+export function ingredientToKibble(ing: Ingredient): KibbleIngredient {
+  return {
+    name: ing.name,
+    unit: "g",
+    amount: ing.amount,
+    cal: ing.cal / 100,
+    pro: ing.pro / 100,
+    carb: ing.carb / 100,
+    fat: ing.fat / 100,
+    fiber: ing.fiber / 100,
+  };
+}
 
 /** 依比例縮放某食材的營養值（ratio = 實際份量 / 100，因數值以每 100g 計）。 */
 export function scaled(ing: Ingredient, ratio: number): Totals {
