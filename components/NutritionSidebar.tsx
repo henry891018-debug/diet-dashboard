@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Totals } from "@/lib/types";
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -32,14 +33,34 @@ export default function NutritionSidebar({
   const { cal, pro, carb, fat, fiber } = totals;
   const mx = Math.max(carb, fat, fiber, 1);
   const pct = (v: number) => `${Math.min(100, (v / mx) * 100)}%`;
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[260px] flex-col gap-5 overflow-y-auto border-l border-border bg-surface p-5 thin-scroll">
-      <div className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted">
+    <aside className="thin-scroll fixed inset-x-0 bottom-0 z-40 flex max-h-[78vh] flex-col gap-3 overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-0 lg:h-screen lg:max-h-none lg:w-[260px] lg:gap-5 lg:rounded-none lg:border-l lg:border-t-0 lg:p-5 lg:shadow-none">
+      {/* 手機：精簡合計列（點擊展開 / 收合） */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center justify-between lg:hidden"
+      >
+        <span className="flex items-baseline gap-3">
+          <span className="text-xl font-medium">
+            {Math.round(cal)}
+            <span className="ml-0.5 text-[11px] text-muted">kcal</span>
+          </span>
+          <span className="text-xl font-medium text-pro">
+            {round1(pro)}
+            <span className="ml-0.5 text-[11px] text-muted">g 蛋白</span>
+          </span>
+        </span>
+        <span className="text-[11px] text-muted">{open ? "收合 ▾" : "明細 ▸"}</span>
+      </button>
+
+      {/* 桌機：今日合計標題 + 大數字 */}
+      <div className="hidden text-[11px] font-medium uppercase tracking-[0.06em] text-muted lg:block">
         今日合計
       </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="hidden grid-cols-2 gap-2.5 lg:grid">
         <div>
           <div className="text-[26px] font-medium leading-none">{Math.round(cal)}</div>
           <div className="mt-0.5 text-[11px] text-muted">熱量 kcal</div>
@@ -52,6 +73,8 @@ export default function NutritionSidebar({
         </div>
       </div>
 
+      {/* 明細（手機收合時隱藏；桌機恆顯示） */}
+      <div className={`${open ? "flex" : "hidden"} flex-col gap-3 lg:flex lg:gap-5`}>
       {/* 三大營養素進度條 */}
       <div className="flex flex-col gap-2">
         <MacroRow label="碳水" value={round1(carb)} width={pct(carb)} color="var(--carb)" />
@@ -119,6 +142,7 @@ export default function NutritionSidebar({
         目標：蛋白質 120g+
         <br />
         熱量 900–1100 kcal
+      </div>
       </div>
     </aside>
   );

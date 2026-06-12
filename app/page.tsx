@@ -281,8 +281,8 @@ export default function Page() {
     sideCat === "全部" ? sortedSide : sortedSide.filter((i) => i.category === sideCat);
 
   return (
-    <div className="grid min-h-screen grid-cols-[1fr_260px]">
-      <main className="p-6">
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1fr_260px]">
+      <main className="p-4 pb-24 lg:p-6 lg:pb-6">
         <h1 className="mb-1 text-xl font-medium tracking-[-0.01em]">餐點規劃</h1>
         <p className="mb-6 text-xs text-muted">選擇食材，即時計算營養總覽</p>
 
@@ -518,7 +518,7 @@ function Section({
 }) {
   return (
     <section className="mb-7">
-      <div className="mb-2.5 flex items-center justify-between">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-muted">
           {label}
         </span>
@@ -564,7 +564,7 @@ function Grid({
   }
   const isProtein = isProteinSection(section);
   return (
-    <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(148px,1fr))]">
+    <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(140px,1fr))]">
       {items.map((ing) => (
         <IngredientCard
           key={ing.uid}
