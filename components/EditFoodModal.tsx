@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CATEGORIES, type FoodCategory } from "@/lib/categories";
 import type { Ingredient } from "@/lib/types";
 
 const UNITS = ["g", "ml"];
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-/** 編輯後回傳的欄位（不含 uid / tag，由父層保留）。 */
+/** 編輯後回傳的欄位（不含 uid，由父層保留）。 */
 export interface EditedFood {
   name: string;
   amount: number;
   unit: string;
+  category: FoodCategory;
   cal: number;
   pro: number;
   carb: number;
@@ -41,6 +43,7 @@ export default function EditFoodModal({
     name: "",
     amount: "",
     unit: "g",
+    category: "其他",
     cal: "",
     pro: "",
     carb: "",
@@ -48,6 +51,7 @@ export default function EditFoodModal({
     fiber: "",
     shrink: "",
     pieceGram: "",
+    pieceUnit: "",
   });
 
   // 帶入被編輯的食材
@@ -57,6 +61,7 @@ export default function EditFoodModal({
         name: ingredient.name,
         amount: String(ingredient.amount),
         unit: ingredient.unit,
+        category: ingredient.category,
         cal: String(ingredient.cal),
         pro: String(ingredient.pro),
         carb: String(ingredient.carb),
@@ -64,6 +69,7 @@ export default function EditFoodModal({
         fiber: String(ingredient.fiber),
         shrink: ingredient.shrink != null ? String(ingredient.shrink) : "",
         pieceGram: ingredient.pieceGram != null ? String(ingredient.pieceGram) : "",
+        pieceUnit: ingredient.pieceUnit ?? "",
       });
     }
   }, [open, ingredient]);
@@ -74,24 +80,24 @@ export default function EditFoodModal({
     setForm((f) => ({ ...f, [key]: value }));
 
   function confirmEdit() {
+    const pu = form.pieceUnit.trim();
+    const pg = parseFloat(form.pieceGram);
     const food: EditedFood = {
       name: form.name.trim() || ingredient!.name,
       amount: parseFloat(form.amount) || ingredient!.amount,
       unit: form.unit,
+      category: form.category as FoodCategory,
       cal: parseFloat(form.cal) || 0,
       pro: parseFloat(form.pro) || 0,
       carb: parseFloat(form.carb) || 0,
       fat: parseFloat(form.fat) || 0,
       fiber: parseFloat(form.fiber) || 0,
+      // 數量單位：兩者都有才啟用，否則清除
+      pieceUnit: pu && pg > 0 ? pu : undefined,
+      pieceGram: pu && pg > 0 ? pg : undefined,
     };
     const sh = parseFloat(form.shrink);
     if (sh) food.shrink = sh;
-    // 以「顆」計的食材（如全蛋）保留每顆重量資訊
-    if (ingredient!.pieceUnit) {
-      food.pieceUnit = ingredient!.pieceUnit;
-      const pg = parseFloat(form.pieceGram);
-      if (pg) food.pieceGram = pg;
-    }
     onSave(food);
   }
 
@@ -116,6 +122,18 @@ export default function EditFoodModal({
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
           />
+        </Field>
+
+        <Field label="分類">
+          <select
+            className="modal-input"
+            value={form.category}
+            onChange={(e) => set("category", e.target.value)}
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
         </Field>
 
         <div className="mb-2.5 grid grid-cols-2 gap-2">
@@ -160,38 +178,48 @@ export default function EditFoodModal({
           <NumField label="纖維 g/100g" value={form.fiber} onChange={(v) => set("fiber", v)} />
         </div>
 
-        {/* 以「顆」計的食材：每顆重量 + 每顆營養（由每 100g 換算） */}
-        {ingredient.pieceUnit && (
-          <div className="mt-3 rounded-rad-sm border border-border p-2.5">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-[11px] text-muted">每{ingredient.pieceUnit}重量 (g)</span>
-              <input
-                type="number"
-                min={0}
-                value={form.pieceGram}
-                onChange={(e) => set("pieceGram", e.target.value)}
-                className="w-20 rounded border-[0.5px] border-border bg-bg px-2 py-1 text-center text-xs focus:border-accent focus:outline-none"
-              />
-            </div>
-            <div className="mb-1 text-[11px] text-muted">
-              每{ingredient.pieceUnit}（{pieceGram || 0}g）約：
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="rounded bg-[#F1EFE8] px-[5px] py-0.5 text-[10px] text-[#444441]">
-                {Math.round(num(form.cal) * pieceFactor)} kcal
-              </span>
-              <span className="rounded bg-pro-l px-[5px] py-0.5 text-[10px] text-pro">
-                {round1(num(form.pro) * pieceFactor)}g 蛋白
-              </span>
-              <span className="rounded bg-amber-l px-[5px] py-0.5 text-[10px] text-amber">
-                {round1(num(form.carb) * pieceFactor)}g 碳水
-              </span>
-              <span className="rounded bg-warn-l px-[5px] py-0.5 text-[10px] text-warn">
-                {round1(num(form.fat) * pieceFactor)}g 脂肪
-              </span>
-            </div>
+        {/* 數量單位（選填）：例如 1 顆 = N 公克，卡片可用數量輸入取代秤重 */}
+        <div className="mt-3 rounded-rad-sm border border-border p-2.5">
+          <div className="mb-2 text-[11px] font-medium text-muted">數量單位（選填）</div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted">單位名稱</span>
+            <input
+              value={form.pieceUnit}
+              onChange={(e) => set("pieceUnit", e.target.value)}
+              placeholder="顆 / 片 / 條…"
+              className="w-16 rounded border-[0.5px] border-border bg-bg px-2 py-1 text-center text-xs focus:border-accent focus:outline-none"
+            />
+            <span className="ml-1 text-[11px] text-muted">每{form.pieceUnit || "單位"}重量 (g)</span>
+            <input
+              type="number"
+              min={0}
+              value={form.pieceGram}
+              onChange={(e) => set("pieceGram", e.target.value)}
+              className="w-16 rounded border-[0.5px] border-border bg-bg px-2 py-1 text-center text-xs focus:border-accent focus:outline-none"
+            />
           </div>
-        )}
+          {form.pieceUnit.trim() && pieceGram > 0 && (
+            <>
+              <div className="mb-1 mt-2 text-[11px] text-muted">
+                每{form.pieceUnit.trim()}（{pieceGram}g）約：
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded bg-[#F1EFE8] px-[5px] py-0.5 text-[10px] text-[#444441]">
+                  {Math.round(num(form.cal) * pieceFactor)} kcal
+                </span>
+                <span className="rounded bg-pro-l px-[5px] py-0.5 text-[10px] text-pro">
+                  {round1(num(form.pro) * pieceFactor)}g 蛋白
+                </span>
+                <span className="rounded bg-amber-l px-[5px] py-0.5 text-[10px] text-amber">
+                  {round1(num(form.carb) * pieceFactor)}g 碳水
+                </span>
+                <span className="rounded bg-warn-l px-[5px] py-0.5 text-[10px] text-warn">
+                  {round1(num(form.fat) * pieceFactor)}g 脂肪
+                </span>
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="mt-4 flex gap-2">
           <button

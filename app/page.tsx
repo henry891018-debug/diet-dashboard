@@ -14,14 +14,14 @@ import {
   makeUid,
   scaled,
 } from "@/lib/ingredients";
-import type { FoodCategory } from "@/lib/categories";
+import { CATEGORIES } from "@/lib/categories";
 import type { Ingredient, KibbleIngredient, SectionId, Totals } from "@/lib/types";
 
 type Tab = "b" | "l";
 type MainMode = "rice" | "kibble";
 
 const KIBBLE_ID = "__kibble";
-const STORAGE_KEY = "diet-dashboard:v1";
+const STORAGE_KEY = "diet-dashboard:v2";
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("b");
@@ -183,15 +183,6 @@ export default function Page() {
     setAddModal({ open: false, section: null });
   };
 
-  const updateCategory = (section: SectionId, uid: string, category: FoodCategory) => {
-    setData((prev) => ({
-      ...prev,
-      [section]: prev[section].map((ing) =>
-        ing.uid === uid ? { ...ing, category } : ing,
-      ),
-    }));
-  };
-
   const saveEdit = (section: SectionId, uid: string, edited: EditedFood) => {
     setData((prev) => ({
       ...prev,
@@ -281,12 +272,13 @@ export default function Page() {
       ? data[editModal.section].find((i) => i.uid === editModal.uid) ?? null
       : null;
 
-  // 配菜分類篩選
-  const sideCats = Array.from(new Set(data["l-side"].map((i) => i.category)));
+  // 配菜：預設依分類排序
+  const sortedSide = [...data["l-side"]].sort(
+    (a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category),
+  );
+  const sideCats = CATEGORIES.filter((c) => sortedSide.some((i) => i.category === c));
   const sideItems =
-    sideCat === "全部"
-      ? data["l-side"]
-      : data["l-side"].filter((i) => i.category === sideCat);
+    sideCat === "全部" ? sortedSide : sortedSide.filter((i) => i.category === sideCat);
 
   return (
     <div className="grid min-h-screen grid-cols-[1fr_260px]">
@@ -317,9 +309,7 @@ export default function Page() {
                 selected={selected}
                 amountOf={amountOf}
                 onToggle={toggle}
-                onAmount={setAmount}
-                onCategory={updateCategory}
-                onEdit={(uid) => setEditModal({ open: true, section: "b-main", uid })}
+                onAmount={setAmount}                onEdit={(uid) => setEditModal({ open: true, section: "b-main", uid })}
                 onDelete={(uid) => deleteIng("b-main", uid)}
               />
             </Section>
@@ -334,9 +324,7 @@ export default function Page() {
                 selected={selected}
                 amountOf={amountOf}
                 onToggle={toggle}
-                onAmount={setAmount}
-                onCategory={updateCategory}
-                onEdit={(uid) => setEditModal({ open: true, section: "b-pro", uid })}
+                onAmount={setAmount}                onEdit={(uid) => setEditModal({ open: true, section: "b-pro", uid })}
                 onDelete={(uid) => deleteIng("b-pro", uid)}
               />
             </Section>
@@ -351,9 +339,7 @@ export default function Page() {
                 selected={selected}
                 amountOf={amountOf}
                 onToggle={toggle}
-                onAmount={setAmount}
-                onCategory={updateCategory}
-                onEdit={(uid) => setEditModal({ open: true, section: "b-drink", uid })}
+                onAmount={setAmount}                onEdit={(uid) => setEditModal({ open: true, section: "b-drink", uid })}
                 onDelete={(uid) => deleteIng("b-drink", uid)}
               />
             </Section>
@@ -395,7 +381,6 @@ export default function Page() {
                   amountOf={amountOf}
                   onToggle={toggle}
                   onAmount={setAmount}
-                  onCategory={updateCategory}
                   onEdit={(uid) => setEditModal({ open: true, section: "l-main-rice", uid })}
                   onDelete={(uid) => deleteIng("l-main-rice", uid)}
                 />
@@ -421,9 +406,7 @@ export default function Page() {
                 selected={selected}
                 amountOf={amountOf}
                 onToggle={toggle}
-                onAmount={setAmount}
-                onCategory={updateCategory}
-                onEdit={(uid) => setEditModal({ open: true, section: "l-pro", uid })}
+                onAmount={setAmount}                onEdit={(uid) => setEditModal({ open: true, section: "l-pro", uid })}
                 onDelete={(uid) => deleteIng("l-pro", uid)}
               />
             </Section>
@@ -453,9 +436,7 @@ export default function Page() {
                 selected={selected}
                 amountOf={amountOf}
                 onToggle={toggle}
-                onAmount={setAmount}
-                onCategory={updateCategory}
-                onEdit={(uid) => setEditModal({ open: true, section: "l-side", uid })}
+                onAmount={setAmount}                onEdit={(uid) => setEditModal({ open: true, section: "l-side", uid })}
                 onDelete={(uid) => deleteIng("l-side", uid)}
               />
             </Section>
@@ -566,7 +547,6 @@ function Grid({
   amountOf,
   onToggle,
   onAmount,
-  onCategory,
   onEdit,
   onDelete,
 }: {
@@ -576,7 +556,6 @@ function Grid({
   amountOf: (ing: Ingredient) => number;
   onToggle: (uid: string) => void;
   onAmount: (uid: string, value: number) => void;
-  onCategory: (section: SectionId, uid: string, category: FoodCategory) => void;
   onEdit: (uid: string) => void;
   onDelete: (uid: string) => void;
 }) {
@@ -595,7 +574,6 @@ function Grid({
           isProtein={isProtein}
           onToggle={() => onToggle(ing.uid)}
           onAmountChange={(v) => onAmount(ing.uid, v)}
-          onCategoryChange={(cat) => onCategory(section, ing.uid, cat)}
           onEdit={() => onEdit(ing.uid)}
           onDelete={() => onDelete(ing.uid)}
         />

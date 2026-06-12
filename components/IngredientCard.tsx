@@ -1,6 +1,6 @@
 "use client";
 
-import { CATEGORIES, categoryColor, type FoodCategory } from "@/lib/categories";
+import { categoryColor } from "@/lib/categories";
 import type { Ingredient } from "@/lib/types";
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -14,7 +14,6 @@ interface Props {
   isProtein: boolean;
   onToggle: () => void;
   onAmountChange: (value: number) => void;
-  onCategoryChange: (category: FoodCategory) => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -26,13 +25,15 @@ export default function IngredientCard({
   isProtein,
   onToggle,
   onAmountChange,
-  onCategoryChange,
   onEdit,
   onDelete,
 }: Props) {
   // 數值以每 100g 計，故實際含量 = 值 × (份量 / 100)
   const ratio = amount / 100;
   const cc = categoryColor(ing.category);
+  // 數量單位（如 1 顆 = pieceGram 公克）
+  const hasPiece = !!ing.pieceGram && ing.pieceGram > 0;
+  const count = hasPiece ? round1(amount / ing.pieceGram!) : 0;
 
   return (
     <div
@@ -82,29 +83,19 @@ export default function IngredientCard({
         </button>
       </div>
 
-      <select
-        value={ing.category}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          e.stopPropagation();
-          onCategoryChange(e.target.value as FoodCategory);
-        }}
+      {/* 分類標籤（唯讀；要改分類請按 ✎ 進入編輯） */}
+      <span
         style={{ backgroundColor: cc.bg, color: cc.color }}
-        className="mb-1.5 max-w-full cursor-pointer appearance-none rounded-full border-none px-1.5 py-[2px] text-[10px] font-medium outline-none"
-        aria-label="分類"
+        className="mb-1.5 inline-block max-w-full rounded-full px-1.5 py-[2px] text-[10px] font-medium"
       >
-        {CATEGORIES.map((c) => (
-          <option key={c} value={c} style={{ backgroundColor: "#fff", color: "#1A1A18" }}>
-            {c}
-          </option>
-        ))}
-      </select>
+        {ing.category}
+      </span>
 
       <div className="mb-1 pr-5 text-[15px] font-semibold leading-snug text-text">
         {ing.name}
       </div>
 
-      {/* 份量輸入 */}
+      {/* 份量輸入（重量） */}
       <div className="mb-0.5 flex items-center gap-1">
         {isProtein && <span className="min-w-[24px] text-[10px] text-muted">生重</span>}
         <input
@@ -117,6 +108,25 @@ export default function IngredientCard({
         />
         <span className="text-[10px] text-muted">{ing.unit}</span>
       </div>
+
+      {/* 數量單位輸入（與重量連動） */}
+      {hasPiece && (
+        <div className="mb-0.5 flex items-center gap-1">
+          <span className="text-[10px] text-hint">≈</span>
+          <input
+            type="number"
+            min={0}
+            step="0.5"
+            value={count}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) =>
+              onAmountChange((parseFloat(e.target.value) || 0) * ing.pieceGram!)
+            }
+            className="w-11 rounded border-[0.5px] border-border bg-transparent px-1 py-px text-center text-xs"
+          />
+          <span className="text-[10px] text-muted">{ing.pieceUnit}</span>
+        </div>
+      )}
 
       {/* 熟重換算（僅蛋白質且有縮水率） */}
       {isProtein && ing.shrink ? (
